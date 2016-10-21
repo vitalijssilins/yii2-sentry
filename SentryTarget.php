@@ -32,6 +32,12 @@ class SentryTarget extends Target
      * @var callable Callback function that can modify extra's array
      */
     public $extraCallback;
+
+    /**
+     * @var callable Callback function that can modify extra's array
+     */
+    public $userCallback;
+
     /**
      * @var \Raven_Client
      */
@@ -65,10 +71,12 @@ class SentryTarget extends Target
         foreach ($this->messages as $message) {
             list($context, $level, $category, $timestamp, $traces) = $message;
             $extra = [];
+            $user = [];
+            $exception = false;
 
             if ($context instanceof \Throwable || $context instanceof \Exception) {
-                $this->client->captureException($context);
                 $description = $context->getMessage();
+                $exception = true;
             } elseif (isset($context['msg'])) {
                 $description = $context['msg'];
                 $extra = $context;
@@ -85,17 +93,26 @@ class SentryTarget extends Target
                 $extra = call_user_func($this->extraCallback, $context, $extra);
             }
 
+            if (is_callable($this->userCallback)) {
+                $user = call_user_func($this->userCallback, $context, $user);
+            }
+
             $data = [
                 'level' => static::getLevelName($level),
                 'timestamp' => $timestamp,
                 'message' => $description,
                 'extra' => $extra,
+                'user' => $user,
                 'tags' => [
                     'category' => $category
                 ]
             ];
 
-            $this->client->capture($data, $traces);
+            if ($exception) {
+              $this->client->captureException($context, $data);
+            } else {
+              $this->client->capture($data, $traces);
+            }
         }
     }
 
