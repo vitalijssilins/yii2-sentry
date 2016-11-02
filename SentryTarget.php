@@ -77,7 +77,7 @@ class SentryTarget extends Target
             if ($context instanceof \Throwable || $context instanceof \Exception) {
                 $description = $context->getMessage();
                 $exception = true;
-            } elseif (isset($context['msg'])) {
+            } elseif (!($context instanceof \stdClass) && isset($context['msg'])) {
                 $description = $context['msg'];
                 $extra = $context;
                 unset($extra['msg']);
